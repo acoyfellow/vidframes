@@ -4,6 +4,7 @@ export type { AICredentials } from './ai';
 export {
   probeVideo,
   extractFrames,
+  extractFramesAtTimestamps,
   estimateFrameCount,
 } from './extract';
 export type { ExtractMode, ExtractOptions, ExtractedFrame, VideoInfo } from './extract';
@@ -19,10 +20,15 @@ export {
   analyzeFrames,
   analyzeVideo,
   estimateAnalysis,
+  selectTimestamps,
+  smartAnalyze,
 } from './analyze';
 export type {
   AnalyzeOptions,
   FrameAnalysis,
   AnalysisEstimate,
   VideoAnalysis,
+  TimestampSelection,
+  SmartAnalyzeOptions,
+  SmartAnalysisResult,
 } from './analyze';

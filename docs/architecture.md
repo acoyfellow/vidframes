@@ -57,6 +57,17 @@ A 1080p frame is ~2MB as JPEG. Resized to 512px max dimension, it's ~30KB. Small
 
 Whisper transcription is significantly cheaper than vision analysis. A 5-minute video = 10 Whisper calls (30s chunks). The cost concern is almost entirely on the vision side, which is why the cost controls focus there.
 
+### Smart analysis (transcript-first)
+
+The `smartAnalyze` function flips the traditional flow. Instead of extracting frames first and analyzing all of them, it:
+
+1. **Transcribes** the audio (cheap Whisper calls)
+2. **Asks a text LLM** (cheap, e.g. llama-3.1-8b) to read the transcript and identify timestamps where visual context adds value — diagrams, slides, code, "as you can see" references
+3. **Extracts 3-5 frames** at only those specific timestamps
+4. **Analyzes** only those frames with the vision model
+
+This is the cheapest path: Whisper + 1 text call + 3-5 vision calls, vs. 15-50 vision calls for blind extraction. The transcript already tells you what's happening — the frames just add visual context where the speaker references something visual.
+
 ## Worker
 
 The deployed Worker (`src/worker/index.ts`) is minimal:

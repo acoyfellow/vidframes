@@ -1,6 +1,11 @@
 import { type AICredentials, getCredentials, runModel } from './ai';
 import type { ExtractOptions, ExtractedFrame, VideoInfo } from './extract';
-import { estimateFrameCount, extractFrames } from './extract';
+import {
+  estimateFrameCount,
+  extractFrames,
+  extractFramesAtTimestamps,
+  probeVideo,
+} from './extract';
 import type { TranscribeOptions, TranscriptionResult } from './transcribe';
 import { transcribeVideo } from './transcribe';
 
@@ -120,13 +125,9 @@ export async function analyzeVideo(
     transcribe?: TranscribeOptions | false;
   } = {},
 ): Promise<VideoAnalysis> {
-  const { extractFrames: ef } = await import('./extract');
-  const { probeVideo } = await import('./extract');
-
   const videoInfo = await probeVideo(videoPath);
 
   if (opts.analyze?.dryRun) {
-    const estimate = estimateAnalysis(videoInfo, opts.extract ?? {}, opts.analyze);
     return {
       frames: [],
       videoInfo,
@@ -134,7 +135,7 @@ export async function analyzeVideo(
     };
   }
 
-  const frames = await ef(videoPath, opts.extract);
+  const frames = await extractFrames(videoPath, opts.extract);
   const analyses = await analyzeFrames(frames, opts.analyze ?? {});
 
   let transcription: TranscriptionResult | undefined;
@@ -145,6 +146,160 @@ export async function analyzeVideo(
   return {
     frames: analyses,
     transcription,
+    videoInfo,
+  };
+}
+
+export interface TimestampSelection {
+  timestamp: number;
+  reason: string;
+}
+
+export interface SmartAnalyzeOptions {
+  accountId?: string;
+  apiToken?: string;
+  transcribe?: TranscribeOptions;
+  /** Text model for timestamp selection. @default '@cf/meta/llama-3.1-8b-instruct' */
+  selectorModel?: string;
+  /** Custom prompt for timestamp selection. */
+  selectorPrompt?: string;
+  /** Max timestamps to select. @default 5 */
+  maxTimestamps?: number;
+  /** Vision analysis options for selected frames. */
+  analyze?: Omit<AnalyzeOptions, 'dryRun' | 'maxFrames'>;
+  /** Frame extraction options for targeted frames. */
+  extract?: { output?: string; format?: 'jpg' | 'png'; resize?: number; quality?: number };
+  /** Progress callback: phase + detail. */
+  onProgress?: (phase: string, detail?: string) => void;
+}
+
+export interface SmartAnalysisResult {
+  transcription: TranscriptionResult;
+  selectedTimestamps: TimestampSelection[];
+  frames: FrameAnalysis[];
+  videoInfo: VideoInfo;
+}
+
+const DEFAULT_SELECTOR_PROMPT = `You are analyzing a video transcript to identify moments where visual context would add the most value.
+
+Look for moments mentioning:
+- Diagrams, charts, or visual aids
+- Code examples or screen shares
+- Whiteboard drawings
+- Physical demonstrations
+- Slides or presentations
+- "as you can see" or "look at this" type references
+
+Return ONLY a JSON array (no markdown, no explanation) of up to {max} timestamps:
+[{{"timestamp": 120, "reason": "whiteboard diagram of system architecture"}}]
+
+Timestamps must be in seconds and within the video duration of {duration}s.
+
+Transcript:
+{transcript}`;
+
+function formatTranscriptForSelector(transcription: TranscriptionResult): string {
+  return transcription.segments.map((s) => `[${s.start}s-${s.end}s] ${s.text}`).join('\n');
+}
+
+function parseTimestamps(
+  text: string,
+  maxDuration: number,
+  maxCount: number,
+): TimestampSelection[] {
+  const match = text.match(/\[[\s\S]*\]/);
+  if (!match) return [];
+
+  try {
+    const parsed = JSON.parse(match[0]) as Array<{ timestamp?: number; reason?: string }>;
+    return parsed
+      .filter(
+        (item) =>
+          typeof item.timestamp === 'number' &&
+          item.timestamp >= 0 &&
+          item.timestamp <= maxDuration,
+      )
+      .map((item) => ({
+        timestamp: Math.round(item.timestamp as number),
+        reason: item.reason ?? 'visual context',
+      }))
+      .sort((a, b) => a.timestamp - b.timestamp)
+      .slice(0, maxCount);
+  } catch {
+    return [];
+  }
+}
+
+export async function selectTimestamps(
+  transcription: TranscriptionResult,
+  videoInfo: VideoInfo,
+  opts: SmartAnalyzeOptions = {},
+): Promise<TimestampSelection[]> {
+  const creds = getCredentials(opts);
+  const model = opts.selectorModel ?? '@cf/meta/llama-3.1-8b-instruct';
+  const maxTimestamps = opts.maxTimestamps ?? 5;
+  const promptTemplate = opts.selectorPrompt ?? DEFAULT_SELECTOR_PROMPT;
+
+  const transcript = formatTranscriptForSelector(transcription);
+  const prompt = promptTemplate
+    .replace('{max}', String(maxTimestamps))
+    .replace('{duration}', String(Math.round(videoInfo.duration)))
+    .replace('{transcript}', transcript);
+
+  const result = (await runModel(
+    model,
+    { messages: [{ role: 'user', content: prompt }] },
+    creds,
+  )) as { response?: string };
+
+  const text = result?.response ?? '';
+  return parseTimestamps(text, videoInfo.duration, maxTimestamps);
+}
+
+export async function smartAnalyze(
+  videoPath: string,
+  opts: SmartAnalyzeOptions = {},
+): Promise<SmartAnalysisResult> {
+  const videoInfo = await probeVideo(videoPath);
+
+  opts.onProgress?.('transcribing', 'extracting audio + whisper transcription...');
+  const transcription = await transcribeVideo(videoPath, opts.transcribe ?? {});
+
+  opts.onProgress?.('selecting', 'asking LLM to identify visually meaningful timestamps...');
+  const selectedTimestamps = await selectTimestamps(transcription, videoInfo, opts);
+
+  if (selectedTimestamps.length === 0) {
+    opts.onProgress?.('skipped', 'no visually meaningful timestamps identified');
+    return {
+      transcription,
+      selectedTimestamps: [],
+      frames: [],
+      videoInfo,
+    };
+  }
+
+  opts.onProgress?.(
+    'extracting',
+    `extracting ${selectedTimestamps.length} frames at targeted timestamps...`,
+  );
+  const frames = await extractFramesAtTimestamps(
+    videoPath,
+    selectedTimestamps.map((s) => s.timestamp),
+    opts.extract ?? {},
+  );
+
+  opts.onProgress?.('analyzing', `analyzing ${frames.length} frames with vision model...`);
+  const analyses = await analyzeFrames(frames, {
+    ...opts.analyze,
+    onProgress: (cur, total, frame) => {
+      opts.onProgress?.('analyzing', `[${cur}/${total}] ${frame.timestamp}s`);
+    },
+  });
+
+  return {
+    transcription,
+    selectedTimestamps,
+    frames: analyses,
     videoInfo,
   };
 }

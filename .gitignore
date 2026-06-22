@@ -1,5 +1,7 @@
 node_modules/
 frames/
+dist/
+site/dist/
 *.mp4
 *.mov
 *.avi

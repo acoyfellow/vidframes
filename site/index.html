@@ -72,6 +72,11 @@ CLOUDFLARE_ACCOUNT_ID=xxx CLOUDFLARE_API_TOKEN=xxx \
             <h3>3. Transcribe</h3>
             <p>Audio is extracted and split into 30s chunks. Each chunk is sent to Workers AI Whisper. Segments are reassembled with timestamps.</p>
           </div>
+          <div class="card">
+            <h3>4. Smart (transcript-first)</h3>
+            <p><code>smartAnalyze</code> flips the flow: transcribe first (cheap), then ask a text LLM "which timestamps have visual value?" (diagrams, slides, code). Extract 3-5 frames at those exact moments. Analyze only those.</p>
+            <p>This is 10x cheaper than blind extraction — you pay for Whisper + 1 text call + 3-5 vision calls instead of 15-50 vision calls.</p>
+          </div>
         </div>
       </section>
 
@@ -128,6 +133,9 @@ CLOUDFLARE_ACCOUNT_ID=xxx CLOUDFLARE_API_TOKEN=xxx \
             <tr><td><code>analyzeFrame(path, opts)</code></td><td>Send one frame to a vision model</td></tr>
             <tr><td><code>analyzeFrames(frames, opts)</code></td><td>Batch analyze with concurrency + maxFrames</td></tr>
             <tr><td><code>analyzeVideo(path, opts)</code></td><td>Extract + analyze + transcribe in one call</td></tr>
+            <tr><td><code>smartAnalyze(path, opts)</code></td><td>Transcript-first: transcribe → LLM picks timestamps → extract 3-5 frames → analyze</td></tr>
+            <tr><td><code>selectTimestamps(transcription, info, opts)</code></td><td>Ask text LLM which timestamps have visual value</td></tr>
+            <tr><td><code>extractFramesAtTimestamps(path, timestamps, opts)</code></td><td>Extract single frames at specific timestamps</td></tr>
             <tr><td><code>estimateAnalysis(info, extractOpts, analyzeOpts)</code></td><td>Dry-run cost estimate</td></tr>
             <tr><td><code>transcribeVideo(path, opts)</code></td><td>Extract audio, chunk, transcribe via Whisper</td></tr>
           </tbody>

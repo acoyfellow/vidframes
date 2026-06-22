@@ -82,6 +82,19 @@ bun run src/cli.ts transcribe lecture.mp4 --segment-duration 30
 - 120 whisper calls
 - Total: 120 API calls (all cheap Whisper)
 
+### Scenario 4: Smart analysis of a 30-minute meeting recording
+
+```sh
+bun run src/cli.ts smart meeting.mp4 --max-timestamps 5 --prompt "Describe the diagram or visual shown"
+```
+
+- 60 whisper calls (30s chunks)
+- 1 text LLM call (timestamp selection)
+- 5 vision calls (targeted frames only)
+- Total: 66 API calls, only 5 are expensive vision calls
+
+Compare to blind `analyze` with scene detection on the same video: ~75-150 vision calls. Smart analysis uses 30x fewer vision calls.
+
 ## Dry-run before every spend
 
 ```sh

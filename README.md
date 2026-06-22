@@ -46,6 +46,7 @@ vidframes probe <video>                    # video info + frame estimates
 vidframes extract <video> [opts]           # extract frames (no API needed)
 vidframes transcribe <video> [opts]        # extract audio + transcribe via Whisper
 vidframes analyze <video> [opts]           # extract + analyze frames via vision model
+vidframes smart <video> [opts]             # transcript-first: transcribe → LLM picks timestamps → extract 3-5 frames → analyze
 vidframes run <video> [opts]               # everything: frames + analysis + transcription
 ```
 
@@ -64,13 +65,15 @@ vidframes run <video> [opts]               # everything: frames + analysis + tra
 | `--concurrency` | `3` | Parallel API requests |
 | `--dry-run` | — | Estimate only, no API calls |
 | `--no-transcribe` | — | Skip audio transcription (analyze command) |
+| `--selector-model` | `@cf/meta/llama-3.1-8b-instruct` | Text model for timestamp selection (smart command) |
+| `--max-timestamps` | `5` | Max timestamps to select (smart command) |
 
 ## Library API
 
 All logic is in the library. The CLI is a thin wrapper.
 
 ```ts
-import { probeVideo, extractFrames, analyzeVideo, estimateAnalysis } from 'vidframes';
+import { probeVideo, extractFrames, analyzeVideo, smartAnalyze, estimateAnalysis } from 'vidframes';
 
 // probe
 const info = await probeVideo('video.mp4');
@@ -93,6 +96,18 @@ for (const frame of result.frames) {
   console.log(`[${frame.frame.timestamp}s] ${frame.description}`);
 }
 console.log(result.transcription?.fullText);
+
+// smart analysis: transcript-first, LLM picks visually meaningful timestamps
+const smart = await smartAnalyze('video.mp4', {
+  maxTimestamps: 5,
+  analyze: { prompt: 'Describe the diagram or visual shown' },
+  onProgress: (phase, detail) => console.log(`${phase}: ${detail}`),
+});
+// 1. transcribes audio (cheap whisper)
+// 2. asks text LLM: "which timestamps have visual value?"
+// 3. extracts 3-5 frames at those exact timestamps
+// 4. analyzes only those frames with vision model
+console.log(smart.selectedTimestamps); // [{timestamp: 120, reason: "whiteboard diagram"}, ...]
 ```
 
 ## Requirements

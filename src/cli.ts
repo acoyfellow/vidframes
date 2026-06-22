@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-import { analyzeFrames, analyzeVideo, estimateAnalysis } from './analyze';
+import { analyzeFrames, analyzeVideo, estimateAnalysis, smartAnalyze } from './analyze';
 import { estimateFrameCount, extractFrames, probeVideo } from './extract';
 import type { ExtractMode } from './extract';
 import { estimateTranscriptionSegments, transcribeVideo } from './transcribe';
@@ -12,7 +12,7 @@ function parseArgs(argv: string[]): {
   const [command, video, ...rest] = argv;
   if (!command || !video) {
     console.error('Usage: vidframes <command> <video> [options]');
-    console.error('Commands: probe, extract, transcribe, analyze, run');
+    console.error('Commands: probe, extract, transcribe, analyze, smart, run');
     process.exit(1);
   }
   const opts: Record<string, string> = {};
@@ -144,6 +144,39 @@ async function main() {
       break;
     }
 
+    case 'smart': {
+      const result = await smartAnalyze(video, {
+        selectorModel: opts['selector-model'],
+        maxTimestamps: num(opts['max-timestamps'], 5),
+        analyze: {
+          model: opts.model,
+          prompt: opts.prompt,
+          concurrency: num(opts.concurrency, 3),
+        },
+        extract: {
+          output: opts.output ?? './frames',
+          resize: num(opts.resize, 512),
+        },
+        onProgress: (phase, detail) => {
+          console.log(`  [${phase}] ${detail ?? ''}`);
+        },
+      });
+
+      console.log(`\nTranscription (${result.transcription.segmentCount} segments):`);
+      console.log(result.transcription.fullText);
+
+      console.log(`\nSelected ${result.selectedTimestamps.length} timestamps:`);
+      for (const ts of result.selectedTimestamps) {
+        console.log(`  ${ts.timestamp}s — ${ts.reason}`);
+      }
+
+      console.log(`\nAnalyzed ${result.frames.length} frames:`);
+      for (const f of result.frames) {
+        console.log(`  [${f.frame.timestamp}s] ${f.description}`);
+      }
+      break;
+    }
+
     case 'run': {
       opts['no-transcribe'] = 'false';
       // fall through to analyze
@@ -181,7 +214,7 @@ async function main() {
 
     default:
       console.error(`Unknown command: ${command}`);
-      console.error('Commands: probe, extract, transcribe, analyze, run');
+      console.error('Commands: probe, extract, transcribe, analyze, smart, run');
       process.exit(1);
   }
 }

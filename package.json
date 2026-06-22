@@ -16,7 +16,7 @@
     "dev": "vite --host 127.0.0.1 --port 5374",
     "dev:worker": "wrangler dev --local --port 4783",
     "build": "vite build && wrangler deploy --dry-run --outdir dist/worker",
-    "deploy": "vite build && wrangler deploy",
+    "deploy": "vite build && wrangler deploy --env production",
     "lint": "biome check src/",
     "format": "biome format --write src/",
     "typecheck": "tsc --noEmit"

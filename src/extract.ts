@@ -145,6 +145,48 @@ export async function extractFrames(
   return frames;
 }
 
+export async function extractFramesAtTimestamps(
+  videoPath: string,
+  timestamps: number[],
+  opts: { output?: string; format?: 'jpg' | 'png'; resize?: number; quality?: number } = {},
+): Promise<ExtractedFrame[]> {
+  if (!existsSync(videoPath)) {
+    throw new Error(`Video not found: ${videoPath}`);
+  }
+
+  const output = opts.output ?? './frames';
+  const format = opts.format ?? 'jpg';
+  const resize = opts.resize ?? 512;
+  const quality = opts.quality ?? 3;
+
+  await mkdir(output, { recursive: true });
+
+  const frames: ExtractedFrame[] = [];
+
+  for (let i = 0; i < timestamps.length; i++) {
+    const ts = timestamps[i];
+    const path = join(output, `frame_${String(i).padStart(4, '0')}.${format}`);
+
+    const args = ['ffmpeg', '-y', '-ss', String(ts), '-i', videoPath, '-frames:v', '1'];
+    if (resize > 0) {
+      args.push(
+        '-vf',
+        `scale='min(${resize},iw)':'min(${resize},ih)':force_original_aspect_ratio=decrease`,
+      );
+    }
+    args.push('-q:v', String(quality), path);
+
+    const proc = Bun.spawn(args, { stdout: 'pipe', stderr: 'pipe' });
+    await proc.exited;
+
+    if (existsSync(path)) {
+      frames.push({ path, timestamp: ts, index: i });
+    }
+  }
+
+  return frames;
+}
+
 export function estimateFrameCount(
   info: VideoInfo,
   opts: ExtractOptions = {},
