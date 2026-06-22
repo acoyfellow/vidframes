@@ -1,0 +1,10 @@
+node_modules/
+frames/
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.webm
+.env
+.env.local
+.dev.vars
