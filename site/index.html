@@ -6,14 +6,41 @@
     <meta name="theme-color" content="#0b1118" />
     <meta name="color-scheme" content="dark" />
     <title>vidframes — cost-aware video analysis on Workers AI</title>
-    <meta name="description" content="Extract frames, analyze with vision models, and transcribe audio from video. Scene detection, resize, dry-run, and hard limits keep costs predictable." />
+    <meta name="description" content="Extract frames locally, transcribe audio with Workers AI, and send only selected frames to a vision model." />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
+    <link rel="canonical" href="https://vidframes.coey.dev/" />
+    <link rel="icon" href="/favicon.png" type="image/png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="vidframes" />
     <meta property="og:title" content="vidframes — cost-aware video analysis" />
-    <meta property="og:description" content="Frame extraction, vision analysis, and audio transcription via Cloudflare Workers AI. Built-in cost controls." />
-    <meta property="og:url" content="https://vidframes.coey.dev" />
+    <meta property="og:description" content="Transcribe first, pick visual timestamps, and analyze only those frames with Workers AI." />
+    <meta property="og:url" content="https://vidframes.coey.dev/" />
     <meta property="og:type" content="website" />
-    <meta name="twitter:card" content="summary" />
+    <meta property="og:site_name" content="vidframes" />
+    <meta property="og:image" content="https://vidframes.coey.dev/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="vidframes title card with a transcript to timestamps to extract to analyze pipeline" />
+    <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:creator" content="@acoyfellow" />
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎬</text></svg>" />
+    <meta name="twitter:title" content="vidframes — cost-aware video analysis" />
+    <meta name="twitter:description" content="Transcribe first, pick visual timestamps, and analyze only those frames with Workers AI." />
+    <meta name="twitter:image" content="https://vidframes.coey.dev/og.png" />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "vidframes",
+        "applicationCategory": "DeveloperApplication",
+        "operatingSystem": "macOS, Linux",
+        "url": "https://vidframes.coey.dev/",
+        "codeRepository": "https://github.com/acoyfellow/vidframes",
+        "description": "Extract frames locally, transcribe audio with Workers AI, and send only selected frames to a vision model.",
+        "license": "https://github.com/acoyfellow/vidframes/blob/main/LICENSE"
+      }
+    </script>
     <link rel="stylesheet" href="/src/style.css" />
   </head>
   <body>

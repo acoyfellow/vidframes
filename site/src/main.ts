@@ -68,3 +68,11 @@ function toggleMode(): void {
 
 toggleMode();
 estimate();
+
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {
+      // Progressive enhancement only. The site works without the cache layer.
+    });
+  });
+}

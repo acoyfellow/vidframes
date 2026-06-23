@@ -1,0 +1,28 @@
+# vidframes
+
+vidframes is a small TypeScript CLI/library for cost-aware video analysis with Cloudflare Workers AI.
+
+Site: https://vidframes.coey.dev/
+Source: https://github.com/acoyfellow/vidframes
+
+Core pages:
+- https://vidframes.coey.dev/ — overview, proof clip, API example, Deploy to Cloudflare button
+- https://vidframes.coey.dev/architecture — module layout and design decisions
+- https://vidframes.coey.dev/costs — frame-count and API-call cost model
+
+Main mechanism:
+1. Extract frames locally with ffmpeg.
+2. Resize frames before uploading to a vision model.
+3. Transcribe audio with Workers AI Whisper.
+4. In smart mode, ask a text model which transcript timestamps need visual context.
+5. Send only selected frames to the vision model.
+
+Install from GitHub:
+```bash
+bun add github:acoyfellow/vidframes
+```
+
+Import:
+```ts
+import { smartAnalyze } from '@acoyfellow/vidframes';
+```
