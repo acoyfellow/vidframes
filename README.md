@@ -6,6 +6,10 @@
 [![GitHub](https://img.shields.io/badge/github-acoyfellow/vidframes-181717?style=for-the-badge)](https://github.com/acoyfellow/vidframes)
 [![MIT](https://img.shields.io/badge/license-MIT-blue?style=for-the-badge)](LICENSE)
 
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/acoyfellow/vidframes)
+
+The button clones this repo into your own GitHub, builds the site with `bun run build`, and deploys the Worker to your account on `*.workers.dev`. No bindings or tokens needed — the deployed Worker only serves the docs site. Frame extraction, analysis, and transcription run locally through the CLI.
+
 Extract frames from video, analyze them with vision models, and transcribe audio through Cloudflare Workers AI.
 
 A 5-minute video at 60fps holds 18,000 frames. Analyzing every one is 18,000 vision calls. vidframes cuts that count three ways:

@@ -232,18 +232,20 @@ console.<span class="fn">log</span>(result.selectedTimestamps);
 
       <section id="deploy">
         <span class="eyebrow">Deploy your own</span>
-        <h2 class="section-title">Put the site on your own domain</h2>
-        <p class="section-lede">The repo ships one Worker that serves this static site. Point <code>wrangler.jsonc</code> at your account, then deploy.</p>
+        <h2 class="section-title">One click to your own account</h2>
+        <p class="section-lede">The button clones the repo into your GitHub, builds the site with <code>bun run build</code>, and deploys the Worker to your account on <code>*.workers.dev</code>. No bindings or tokens to configure.</p>
+        <p style="margin:1.5rem 0">
+          <a href="https://deploy.workers.cloudflare.com/?url=https://github.com/acoyfellow/vidframes">
+            <img src="https://deploy.workers.cloudflare.com/button" alt="Deploy to Cloudflare" height="40" />
+          </a>
+        </p>
+        <p class="section-lede">Or deploy from a clone:</p>
         <div class="code-block">
           <div class="code-header">bash</div>
-          <pre><code data-lang="bash"><span class="com"># 1. edit wrangler.jsonc -> env.production</span>
-<span class="com">#    account_id : your Cloudflare account ID</span>
-<span class="com">#    routes     : your domain, or delete it for a *.workers.dev URL</span>
-
-<span class="com"># 2. render the docs, build the site, deploy</span>
-bun run deploy</code></pre>
+          <pre><code data-lang="bash">bun install
+bun run deploy           <span class="com"># your account, *.workers.dev</span></code></pre>
         </div>
-        <p class="section-lede">The deployed Worker is only the docs site: it serves <code>site/dist</code> and exposes <code>/health</code>, with no Workers AI binding or token. Frame extraction, analysis, and transcription run locally through the CLI, where your token stays on your machine.</p>
+        <p class="section-lede">The deployed Worker only serves this docs site — it builds <code>site/dist</code> and exposes <code>/health</code>, with no Workers AI binding or token. Frame extraction, analysis, and transcription run locally through the CLI, where your token stays on your machine.</p>
       </section>
 
       <footer>

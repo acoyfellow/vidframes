@@ -16,8 +16,10 @@
     "render:docs": "bun scripts/render-docs.ts",
     "dev": "bun run render:docs && vite --host 127.0.0.1 --port 5374",
     "dev:worker": "wrangler dev --local --port 4783",
-    "build": "bun run render:docs && vite build && wrangler deploy --dry-run --outdir dist/worker",
-    "deploy": "bun run render:docs && vite build && wrangler deploy --env production",
+    "build": "bun run render:docs && vite build",
+    "deploy": "wrangler deploy",
+    "deploy:prod": "bun run build && wrangler deploy --env production",
+    "check": "bun run build && wrangler deploy --dry-run --outdir dist/worker",
     "lint": "biome check src/",
     "format": "biome format --write src/",
     "typecheck": "tsc --noEmit"
