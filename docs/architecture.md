@@ -51,7 +51,7 @@ A 1080p frame is ~2MB as JPEG. Resized to 512px max dimension, it's ~30KB. Fewer
 
 ### Hard frame cap
 
-`--max-frames` is a hard ceiling. Even if scene detection produces 200 frames, `--max-frames 50` stops at 50. This is the answer to "how much are you willing to spend?"
+`--max-frames` is a hard ceiling. Even if scene detection produces 200 frames, `--max-frames 50` stops at 50. Ross's question becomes a flag value instead of an open-ended run.
 
 ### Audio is the minor cost
 
@@ -61,8 +61,8 @@ Whisper runs one call per 30-second chunk: a 5-minute video is 10 calls. That co
 
 The `smartAnalyze` function flips the traditional flow. Instead of extracting frames first and analyzing all of them, it:
 
-1. **Transcribes** the audio (cheap Whisper calls)
-2. **Asks a text LLM** (cheap, e.g. llama-3.1-8b) to read the transcript and identify timestamps where visual context adds value — diagrams, slides, code, "as you can see" references
+1. **Transcribes** the audio in 30-second chunks
+2. **Asks a text LLM** (e.g. llama-3.1-8b) to read the transcript and identify timestamps where visual context adds value — diagrams, slides, code, "as you can see" references
 3. **Extracts 3-5 frames** at only those specific timestamps
 4. **Analyzes** only those frames with the vision model
 

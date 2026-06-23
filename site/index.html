@@ -59,7 +59,7 @@
       <section class="hero">
         <span class="eyebrow">Cloudflare Workers AI</span>
         <h1>Cost-aware video analysis</h1>
-        <p class="tagline">Extract frames, analyze them with a vision model, and transcribe audio through Workers AI. The frame count is capped before any vision call runs, so <code>--dry-run</code> shows the bill before you pay it.</p>
+        <p class="tagline">Extract frames, analyze them with a vision model, and transcribe audio through Workers AI. The frame count is capped before any vision call runs, so <code>--dry-run</code> prints the call count before the run.</p>
         <div class="badges">
           <a href="https://github.com/acoyfellow/vidframes"><img alt="GitHub" src="https://img.shields.io/badge/github-acoyfellow/vidframes-181717?style=for-the-badge" /></a>
           <img alt="License" src="https://img.shields.io/badge/license-MIT-blue?style=for-the-badge" />
@@ -77,7 +77,7 @@
           <pre><code data-lang="bash"><span class="com"># inspect the video, estimate frames per mode (no token needed)</span>
 bun run src/cli.ts probe video.mp4
 
-<span class="com"># count frames and name the model, without spending anything</span>
+<span class="com"># count frames and name the model, without model calls</span>
 bun run src/cli.ts analyze video.mp4 <span class="flag">--dry-run</span>
 
 <span class="com"># transcript-first run against Workers AI</span>
@@ -171,7 +171,7 @@ Selected 1 timestamp:
       <section id="cost-calculator">
         <span class="eyebrow">Cost estimator</span>
         <h2 class="section-title">Count the calls before running</h2>
-        <p class="section-lede">Vision calls dominate the bill, so the estimator counts them per mode. Whisper and the single text LLM call are cheap by comparison; they're listed for completeness. The <a href="/costs">cost model</a> has the frame-count tables and worked scenarios.</p>
+        <p class="section-lede">Vision calls are the line item to watch, so the estimator counts them per mode. Whisper and the single text LLM call are listed separately. The <a href="/costs">cost model</a> has the frame-count tables and worked scenarios.</p>
 
         <div class="calculator">
           <div class="calc-inputs">
@@ -230,7 +230,7 @@ Selected 1 timestamp:
   <span class="fn">onProgress</span>: (phase, detail) => console.<span class="fn">log</span>(<span class="str">`${phase}: ${detail}`</span>),
 });
 
-<span class="com">// 1. transcribes audio (cheap whisper)</span>
+<span class="com">// 1. transcribes audio in 30s chunks</span>
 <span class="com">// 2. asks text LLM which timestamps have visual value</span>
 <span class="com">// 3. extracts 3-5 frames at those exact timestamps</span>
 <span class="com">// 4. analyzes only those frames with vision model</span>

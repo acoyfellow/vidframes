@@ -32,7 +32,7 @@ bun install
 # probe a video — see duration, resolution, frame estimates per mode
 bun run src/cli.ts probe video.mp4
 
-# dry-run — see how many frames + API calls before spending
+# dry-run — print frame count + model without API calls
 bun run src/cli.ts analyze video.mp4 --dry-run
 
 # extract frames only (scene detection, no API calls)
@@ -92,7 +92,7 @@ import { probeVideo, extractFrames, analyzeVideo, smartAnalyze, estimateAnalysis
 // probe
 const info = await probeVideo('video.mp4');
 
-// estimate before spending
+// estimate call count before model calls
 const estimate = estimateAnalysis(info, { mode: 'scene' }, { maxFrames: 15 });
 console.log(estimate.frameCount); // ~15
 
@@ -117,12 +117,22 @@ const smart = await smartAnalyze('video.mp4', {
   analyze: { prompt: 'Describe the diagram or visual shown' },
   onProgress: (phase, detail) => console.log(`${phase}: ${detail}`),
 });
-// 1. transcribes audio (cheap whisper)
+// 1. transcribes audio in 30s chunks
 // 2. asks text LLM: "which timestamps have visual value?"
 // 3. extracts 3-5 frames at those exact timestamps
 // 4. analyzes only those frames with vision model
 console.log(smart.selectedTimestamps); // [{timestamp: 120, reason: "whiteboard diagram"}, ...]
 ```
+
+## Status And Limits
+
+`0.0.1`. This is a small public repo with one local proof run, not a hosted video-analysis service.
+
+- The deployed Worker serves the docs site only. It has no Workers AI binding and stores no video.
+- The CLI runs locally and shells out to `ffmpeg`; `ffmpeg` must be installed.
+- Workers AI calls use your `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` at runtime.
+- `--dry-run` prints frame count, model, resize, and transcript segment count. It does not calculate a dollar price.
+- `smart` mode depends on the transcript naming the visual moment. If the speaker never references a slide, diagram, or screen, the selector may return nothing.
 
 ## Requirements
 
@@ -130,15 +140,16 @@ console.log(smart.selectedTimestamps); // [{timestamp: 120, reason: "whiteboard 
 - [Bun](https://bun.sh/) runtime
 - Cloudflare account with Workers AI (for analysis + transcription only; frame extraction needs no API)
 
-## Deploy
+## Deploy The Docs Site
 
-The site deploys to `vidframes.coey.dev`:
+Use the button at the top of this README, or run:
 
 ```bash
+bun run build
 bun run deploy
 ```
 
-Worker config is in `wrangler.jsonc`. The Worker serves the static site from `site/dist` and exposes `/health`.
+That deploys the docs Worker to your account on `*.workers.dev`. It does not deploy a hosted analysis API. The analysis code runs through the local CLI.
 
 ## More docs
 

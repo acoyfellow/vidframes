@@ -80,7 +80,7 @@ bun run src/cli.ts transcribe lecture.mp4 --segment-duration 30
 
 - 0 vision calls
 - 120 whisper calls
-- Total: 120 API calls (all cheap Whisper)
+- Total: 120 API calls (all Whisper)
 
 ### Scenario 4: Smart analysis of a 30-minute meeting recording
 
@@ -93,9 +93,9 @@ bun run src/cli.ts smart meeting.mp4 --max-timestamps 5 --prompt "Describe the d
 - 5 vision calls (targeted frames only)
 - Total: 66 API calls, 5 of them vision
 
-Blind `analyze` with scene detection on the same 30-minute recording produces an estimated 75-150 vision calls (content-dependent). Smart mode fixes the vision count at `--max-timestamps` instead, trading it for one cheap text LLM call. The win grows with video length, since the vision count stops tracking duration.
+Blind `analyze` with scene detection on the same 30-minute recording produces an estimated 75-150 vision calls (content-dependent). Smart mode fixes the vision count at `--max-timestamps` instead, trading it for one text LLM call. The difference grows with video length, since the vision count stops tracking duration.
 
-## Dry-run before every spend
+## Dry-run before model calls
 
 ```sh
 bun run src/cli.ts analyze video.mp4 --dry-run
@@ -107,4 +107,4 @@ Prints:
 - Resize dimension
 - Whisper segment count
 
-No API calls made. Use this to sanity-check before every run.
+No API calls made. Use this to check the call count before every run.
