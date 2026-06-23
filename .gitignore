@@ -2,8 +2,11 @@ node_modules/
 frames/
 dist/
 site/dist/
-proof/
+site/architecture.html
+site/costs.html
+/proof/
 *.mp4
+!site/public/proof/*.mp4
 *.mov
 *.avi
 *.mkv

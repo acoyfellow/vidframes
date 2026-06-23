@@ -20,10 +20,10 @@
     <nav class="topbar">
       <a href="/" class="topbar-brand"><span class="dot"></span> vidframes</a>
       <div class="topbar-links">
-        <a href="#quick-start">Quick start</a>
         <a href="#how-it-works">How it works</a>
         <a href="#proof">Proof</a>
-        <a href="#api">API</a>
+        <a href="/architecture">Architecture</a>
+        <a href="/costs">Costs</a>
         <a href="https://github.com/acoyfellow/vidframes">GitHub</a>
       </div>
     </nav>
@@ -32,7 +32,7 @@
       <section class="hero">
         <span class="eyebrow">Cloudflare Workers AI</span>
         <h1>Cost-aware video analysis</h1>
-        <p class="tagline">Extract frames, analyze with vision models, and transcribe audio — all through Cloudflare Workers AI. Scene detection, resize, dry-run estimates, and hard frame caps keep spending predictable.</p>
+        <p class="tagline">Extract frames, analyze them with a vision model, and transcribe audio through Workers AI. The frame count is capped before any vision call runs, so <code>--dry-run</code> shows the bill before you pay it.</p>
         <div class="badges">
           <a href="https://github.com/acoyfellow/vidframes"><img alt="GitHub" src="https://img.shields.io/badge/github-acoyfellow/vidframes-181717?style=for-the-badge" /></a>
           <img alt="License" src="https://img.shields.io/badge/license-MIT-blue?style=for-the-badge" />
@@ -42,37 +42,19 @@
 
       <section id="quick-start">
         <span class="eyebrow">Quick start</span>
-        <h2 class="section-title">Three commands to start</h2>
-        <p class="section-lede">Probe a video for free. Dry-run to see costs. Run the full pipeline when ready.</p>
+        <h2 class="section-title">Probe, dry-run, then run</h2>
+        <p class="section-lede"><code>probe</code> and <code>extract</code> need no API token. <code>--dry-run</code> counts frames without calling a model. Real output is in the <a href="#proof">Proof</a> section below.</p>
 
         <div class="code-block">
-          <div class="code-header">bash — probe</div>
-          <pre><code data-lang="bash">bun run src/cli.ts probe video.mp4
+          <div class="code-header">bash</div>
+          <pre><code data-lang="bash"><span class="com"># inspect the video, estimate frames per mode (no token needed)</span>
+bun run src/cli.ts probe video.mp4
 
-<span class="dim"># Video info:</span>
-<span class="dim">#   duration: 15.0s</span>
-<span class="dim">#   resolution: 1280x720</span>
-<span class="dim">#   fps: 30.0</span>
-<span class="dim">#   scene: ~3 frames</span>
-<span class="dim">#   interval: ~3 frames</span>
-<span class="dim">#   keyframe: ~30 frames</span></code></pre>
-        </div>
+<span class="com"># count frames and name the model, without spending anything</span>
+bun run src/cli.ts analyze video.mp4 <span class="flag">--dry-run</span>
 
-        <div class="code-block">
-          <div class="code-header">bash — dry-run</div>
-          <pre><code data-lang="bash">bun run src/cli.ts analyze video.mp4 <span class="flag">--dry-run</span>
-
-<span class="dim"># Dry run — cost estimate:</span>
-<span class="dim">#   frames: 3</span>
-<span class="dim">#   model: @cf/meta/llama-3.2-11b-vision-instruct</span>
-<span class="dim">#   resize: 512px max dimension</span>
-<span class="dim">#   transcription segments: ~1</span>
-<span class="dim">#   Run without --dry-run to execute.</span></code></pre>
-        </div>
-
-        <div class="code-block">
-          <div class="code-header">bash — full smart analysis</div>
-          <pre><code data-lang="bash">CLOUDFLARE_ACCOUNT_ID=xxx CLOUDFLARE_API_TOKEN=xxx \
+<span class="com"># transcript-first run against Workers AI</span>
+CLOUDFLARE_ACCOUNT_ID=xxx CLOUDFLARE_API_TOKEN=xxx \
   bun run src/cli.ts smart video.mp4 \
   <span class="flag">--max-timestamps</span> 3 \
   <span class="flag">--prompt</span> <span class="str">"Describe what's happening"</span></code></pre>
@@ -81,8 +63,8 @@
 
       <section id="how-it-works">
         <span class="eyebrow">How it works</span>
-        <h2 class="section-title">Four modes, one pipeline</h2>
-        <p class="section-lede">All logic lives in the library. The CLI is a thin wrapper.</p>
+        <h2 class="section-title">What runs, in order</h2>
+        <p class="section-lede">All logic lives in the library. The CLI is a thin wrapper. The <a href="/architecture">architecture doc</a> covers the module layout and each design decision.</p>
 
         <div class="grid">
           <div class="card">
@@ -97,8 +79,8 @@
           </div>
           <div class="card">
             <h3>2. Analyze</h3>
-            <p>Each frame is sent to a Workers AI vision model. Concurrency-limited (default 3 parallel). Hard <code>--max-frames</code> cap prevents runaway costs.</p>
-            <p>Use <code>--dry-run</code> to see exactly how many frames will be analyzed before spending a cent.</p>
+            <p>Each frame goes to a Workers AI vision model, 3 requests in parallel by default. <code>--max-frames</code> caps how many frames reach the model, so the vision-call count has a ceiling you set.</p>
+            <p><code>--dry-run</code> prints that count and the model name without making a call.</p>
           </div>
           <div class="card">
             <h3>3. Transcribe</h3>
@@ -106,85 +88,63 @@
           </div>
           <div class="card">
             <h3>4. Smart</h3>
-            <p><code>smartAnalyze</code> flips the flow: transcribe first (cheap), then ask a text LLM "which timestamps have visual value?" (diagrams, slides, code). Extract 3-5 frames at those exact moments. Analyze only those.</p>
-            <p>10x cheaper than blind extraction.</p>
+            <p><code>smartAnalyze</code> transcribes first, then asks a text LLM which timestamps the transcript flags as visual (diagrams, slides, code). It extracts a frame at each flagged moment and analyzes only those.</p>
+            <p>Vision calls track the number of visual references, not the length of the video.</p>
           </div>
         </div>
       </section>
 
       <section id="proof">
-        <span class="eyebrow">Dogfooding proof</span>
-        <h2 class="section-title">Actually runs. Actually works.</h2>
-        <p class="section-lede">Real output from a 15-second test video with 3 scene changes and speech audio. Run on Cloudflare Workers AI with llama-3.2-11b-vision and Whisper.</p>
+        <span class="eyebrow">Dogfooding</span>
+        <h2 class="section-title">One run on an 11-second clip</h2>
+        <p class="section-lede">The input is below: three slides rendered from HTML in headless Chrome, stitched with a <code>say</code> voiceover. It ran against Workers AI with <code>whisper</code>, <code>llama-3.1-8b-instruct</code> for timestamp selection, and <code>llama-3.2-11b-vision-instruct</code> for the frame. A demo input, not a benchmark.</p>
 
-        <div class="terminal">
-          <div class="terminal-header">
-            <div class="terminal-dots"><span></span><span></span><span></span></div>
-            <span>probe — video info + frame estimates</span>
-          </div>
-          <div class="terminal-body"><span class="prompt">$</span> bun run src/cli.ts probe proof/test_with_audio.mp4
-
-Video info:
-  duration: 11.4s
-  resolution: 1280x720
-  fps: 30.0
-  codec: h264
-  scene: ~2 frames (~2 scene changes at threshold 0.4)
-  interval: ~2 frames (2 frames at 5s intervals)
-  keyframe: ~23 frames</div>
-        </div>
-
-        <div class="terminal">
-          <div class="terminal-header">
-            <div class="terminal-dots"><span></span><span></span><span></span></div>
-            <span>extract — interval mode</span>
-          </div>
-          <div class="terminal-body"><span class="prompt">$</span> bun run src/cli.ts extract proof/test_with_audio.mp4 <span class="dim">--mode interval --interval 5 --resize 512</span>
-
-Extracted 3 frames to proof/frames
-  [0] 0.0s frame_0001.jpg
-  [1] 5.0s frame_0002.jpg
-  [2] 10.0s frame_0003.jpg</div>
-        </div>
+        <video class="proof-video" controls preload="none" poster="/proof/poster.png">
+          <source src="/proof/demo.mp4" type="video/mp4" />
+        </video>
 
         <div class="terminal">
           <div class="terminal-header">
             <div class="terminal-dots"><span></span><span></span><span></span></div>
             <span>smart — transcript-first targeted analysis</span>
           </div>
-          <div class="terminal-body"><span class="prompt">$</span> bun run src/cli.ts smart proof/test_with_audio.mp4 <span class="dim">--max-timestamps 3</span>
+          <div class="terminal-body"><span class="prompt">$</span> bun run src/cli.ts smart proof/demo.mp4 <span class="dim">--max-timestamps 3</span>
 
   <span class="info">[transcribing]</span> extracting audio + whisper transcription...
   <span class="info">[selecting]</span> asking LLM to identify visually meaningful timestamps...
-  <span class="info">[extracting]</span> extracting 2 frames at targeted timestamps...
-  <span class="info">[analyzing]</span> analyzing 2 frames with vision model...
-  <span class="info">[analyzing]</span> [1/2] 0s
-  <span class="info">[analyzing]</span> [2/2] 10s
+  <span class="info">[extracting]</span> extracting 1 frame at targeted timestamps...
+  <span class="info">[analyzing]</span> analyzing 1 frame with vision model...
+  <span class="info">[analyzing]</span> [1/1] 10s
 
-Transcription (1 segments):
-Welcome to VidFrames, a cost-aware video analysis tool. Here is the architecture
-diagram showing scene detection, resize, and analysis. Now let's look at the
-smart analysis flow.
+Transcription (1 segment):
+Welcome to VidFrames, a cost-aware video analysis tool. Here is the
+architecture diagram showing scene detection, resize, and analysis.
+Now let's look at the smart analysis flow.
 
-Selected 2 timestamps:
-  0s — diagram of scene detection, resize, and analysis
-  10s — look at this type reference to smart analysis flow
+Selected 1 timestamp:
+  10s — whiteboard diagram of smart analysis flow
 
-Analyzed 2 frames:
-  [0s] The image is a solid black background with no visible objects or
-  features. It appears to be a blank slate, devoid of any visual elements.
-  [10s] The image is a solid, dark gray color with no visible objects or
-  features. The background is a uniform, flat gray tone.
-
-<span class="ok">✓ 2 vision calls + 1 whisper call + 1 text LLM call = 4 total API calls</span>
-<span class="dim">  vs. blind analyze: ~15-50 vision calls</span></div>
+<span class="ok">✓ 3 API calls: 1 whisper, 1 text LLM, 1 vision</span></div>
         </div>
+
+        <div class="frame-result">
+          <div>
+            <img src="/proof/frame-10s.jpg" alt="The 512px frame the vision model received, the smart-analysis-flow slide" />
+            <p class="caption">frame at 10s, resized to 512px — exactly what the model received</p>
+          </div>
+          <div class="desc">
+            <span class="tag">vision model output</span>
+            The image presents a slide from a presentation. The title "Transcript-first, targeted frames" is displayed in white text at the top. Below it, three rounded rectangular boxes are arranged horizontally — labeled <strong>Transcribe</strong>, <strong>Pick timestamps</strong>, and <strong>Extract frames</strong> — each with a green arrow pointing right. The words "SMART ANALYSIS" appear in small green text above the title. The background is solid black.
+          </div>
+        </div>
+
+        <p class="section-lede" style="margin-top:1.25rem">The transcript flagged one moment strongly ("now let's look at the smart analysis flow"), so the selector returned a single timestamp and the run made one vision call instead of analyzing all three slides. The description is accurate down to the box labels and arrow color, which is the point: the frame is read only where the transcript says something visual happens. Blind extraction grows vision calls with video length; smart grows them with the count of visual references.</p>
       </section>
 
       <section id="cost-calculator">
         <span class="eyebrow">Cost estimator</span>
-        <h2 class="section-title">Know the cost before you spend</h2>
-        <p class="section-lede">Vision models are frontier-priced. This tool makes costs visible before any API call.</p>
+        <h2 class="section-title">Count the calls before running</h2>
+        <p class="section-lede">Vision calls dominate the bill, so the estimator counts them per mode. Whisper and the single text LLM call are cheap by comparison; they're listed for completeness. The <a href="/costs">cost model</a> has the frame-count tables and worked scenarios.</p>
 
         <div class="calculator">
           <div class="calc-inputs">
@@ -235,7 +195,7 @@ Analyzed 2 frames:
 
         <div class="code-block">
           <div class="code-header">typescript — smart analysis</div>
-          <pre><code data-lang="ts"><span class="kw">import</span> { smartAnalyze } <span class="kw">from</span> <span class="str">'vidframes'</span>;
+          <pre><code data-lang="ts"><span class="kw">import</span> { smartAnalyze } <span class="kw">from</span> <span class="str">'@acoyfellow/vidframes'</span>;
 
 <span class="kw">const</span> result = <span class="kw">await</span> <span class="fn">smartAnalyze</span>(<span class="str">'video.mp4'</span>, {
   maxTimestamps: <span class="num">5</span>,
@@ -271,13 +231,19 @@ console.<span class="fn">log</span>(result.selectedTimestamps);
       </section>
 
       <section id="deploy">
-        <span class="eyebrow">Deploy</span>
-        <h2 class="section-title">Ship to vidframes.coey.dev</h2>
+        <span class="eyebrow">Deploy your own</span>
+        <h2 class="section-title">Put the site on your own domain</h2>
+        <p class="section-lede">The repo ships one Worker that serves this static site. Point <code>wrangler.jsonc</code> at your account, then deploy.</p>
         <div class="code-block">
           <div class="code-header">bash</div>
-          <pre><code data-lang="bash">bun run deploy</code></pre>
+          <pre><code data-lang="bash"><span class="com"># 1. edit wrangler.jsonc -> env.production</span>
+<span class="com">#    account_id : your Cloudflare account ID</span>
+<span class="com">#    routes     : your domain, or delete it for a *.workers.dev URL</span>
+
+<span class="com"># 2. render the docs, build the site, deploy</span>
+bun run deploy</code></pre>
         </div>
-        <p class="section-lede">Worker config in <code>wrangler.jsonc</code>. Worker serves the static site from <code>site/dist</code> and exposes <code>/health</code>.</p>
+        <p class="section-lede">The deployed Worker is only the docs site: it serves <code>site/dist</code> and exposes <code>/health</code>, with no Workers AI binding or token. Frame extraction, analysis, and transcription run locally through the CLI, where your token stays on your machine.</p>
       </section>
 
       <footer>

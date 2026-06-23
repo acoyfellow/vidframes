@@ -1,5 +1,5 @@
 {
-  "name": "vidframes",
+  "name": "@acoyfellow/vidframes",
   "version": "0.0.1",
   "private": true,
   "type": "module",
@@ -13,10 +13,11 @@
   },
   "scripts": {
     "cli": "bun run src/cli.ts",
-    "dev": "vite --host 127.0.0.1 --port 5374",
+    "render:docs": "bun scripts/render-docs.ts",
+    "dev": "bun run render:docs && vite --host 127.0.0.1 --port 5374",
     "dev:worker": "wrangler dev --local --port 4783",
-    "build": "vite build && wrangler deploy --dry-run --outdir dist/worker",
-    "deploy": "vite build && wrangler deploy --env production",
+    "build": "bun run render:docs && vite build && wrangler deploy --dry-run --outdir dist/worker",
+    "deploy": "bun run render:docs && vite build && wrangler deploy --env production",
     "lint": "biome check src/",
     "format": "biome format --write src/",
     "typecheck": "tsc --noEmit"
@@ -25,6 +26,7 @@
     "@biomejs/biome": "^1.9.4",
     "@cloudflare/workers-types": "^4.20260525.0",
     "@types/bun": "^1.3.14",
+    "marked": "^18.0.5",
     "typescript": "^5.7.3",
     "vite": "^7.3.3",
     "wrangler": "^4.82.1"

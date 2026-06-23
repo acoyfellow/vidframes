@@ -5,7 +5,7 @@ import { join } from 'node:path';
 export type ExtractMode = 'scene' | 'interval' | 'keyframe';
 
 export interface ExtractOptions {
-  /** Extraction strategy. scene = only on scene changes (cheapest), interval = every N seconds, keyframe = I-frames only. */
+  /** Extraction strategy. scene = emit a frame only when the inter-frame difference crosses the threshold; interval = every N seconds; keyframe = I-frames only. */
   mode?: ExtractMode;
   /** Seconds between frames. Only used in interval mode. @default 5 */
   interval?: number;

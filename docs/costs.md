@@ -6,7 +6,7 @@ This doc answers that question with numbers.
 
 ## The problem
 
-A 5-minute video at 60fps = 18,000 frames. Sending all of them to a frontier vision model is prohibitively expensive. Most of those frames are near-duplicates — the same scene from a slightly different moment.
+A 5-minute video at 60fps = 18,000 frames, which is 18,000 vision calls if you analyze each one. Most of those frames are near-duplicates: the same scene a fraction of a second apart.
 
 ## The solution: extract less, resize smaller, cap hard
 
@@ -21,7 +21,7 @@ A 5-minute video at 60fps = 18,000 frames. Sending all of them to a frontier vis
 | Keyframe | auto | ~30-60 | ~30-60 |
 | Scene + cap | threshold 0.4, max 10 | 10 | 10 |
 
-Scene detection with a hard cap of 10 frames on a 5-minute video = 10 vision API calls. That's a coffee.
+The `Every frame` and `Interval` rows are exact math. The `Scene` and `Keyframe` rows are content-dependent estimates: a static screen-share produces far fewer frames than a fast-cut montage. With `--max-frames`, the worst case is fixed regardless of content.
 
 ### Resize impact
 
@@ -42,7 +42,7 @@ Default resize is 512px. Sufficient for "describe what's happening" prompts. Inc
 | 30 min | 60 | 60 |
 | 1 hour | 120 | 120 |
 
-Whisper is cheap. Don't worry about it.
+Whisper calls scale linearly at one per 30-second chunk, independent of resolution. They sit well below vision calls per unit cost, so transcription is rarely the line item to optimize.
 
 ## Example scenarios
 
@@ -91,9 +91,9 @@ bun run src/cli.ts smart meeting.mp4 --max-timestamps 5 --prompt "Describe the d
 - 60 whisper calls (30s chunks)
 - 1 text LLM call (timestamp selection)
 - 5 vision calls (targeted frames only)
-- Total: 66 API calls, only 5 are expensive vision calls
+- Total: 66 API calls, 5 of them vision
 
-Compare to blind `analyze` with scene detection on the same video: ~75-150 vision calls. Smart analysis uses 30x fewer vision calls.
+Blind `analyze` with scene detection on the same 30-minute recording produces an estimated 75-150 vision calls (content-dependent). Smart mode fixes the vision count at `--max-timestamps` instead, trading it for one cheap text LLM call. The win grows with video length, since the vision count stops tracking duration.
 
 ## Dry-run before every spend
 

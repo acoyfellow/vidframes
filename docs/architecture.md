@@ -39,11 +39,11 @@ video.mp4
 
 ### Scene detection by default
 
-Fixed-interval extraction at 1fps on a 5-minute video produces 300 frames. At frontier vision model pricing, that's expensive. Scene detection (`ffmpeg select='gt(scene,0.4)'`) typically yields 10-30x fewer frames because it only fires when the visual content actually changes.
+Fixed-interval extraction at 1fps on a 5-minute video produces 300 frames, which is 300 vision calls. Scene detection (`ffmpeg select='gt(scene,0.4)'`) emits a frame only when the inter-frame difference crosses the threshold, so the count tracks visual change instead of duration. How much it drops depends on the content: a static screen-share yields a handful, a fast-cut montage yields many.
 
 ### Resize before analysis
 
-A 1080p frame is ~2MB as JPEG. Resized to 512px max dimension, it's ~30KB. Smaller images mean fewer input tokens, faster API responses, and lower cost — with negligible quality loss for "describe what's happening" prompts.
+A 1080p frame is ~2MB as JPEG. Resized to 512px max dimension, it's ~30KB. Fewer pixels mean fewer input tokens per call. 512px holds enough detail for "describe what's happening" prompts; raise it with `--resize 1024` when the task is OCR or reading small UI text.
 
 ### Dry-run first
 
@@ -53,9 +53,9 @@ A 1080p frame is ~2MB as JPEG. Resized to 512px max dimension, it's ~30KB. Small
 
 `--max-frames` is a hard ceiling. Even if scene detection produces 200 frames, `--max-frames 50` stops at 50. This is the answer to "how much are you willing to spend?"
 
-### Audio is cheap
+### Audio is the minor cost
 
-Whisper transcription is significantly cheaper than vision analysis. A 5-minute video = 10 Whisper calls (30s chunks). The cost concern is almost entirely on the vision side, which is why the cost controls focus there.
+Whisper runs one call per 30-second chunk: a 5-minute video is 10 calls. That count is far below the per-frame vision count on most videos, so the cost controls focus on the vision side.
 
 ### Smart analysis (transcript-first)
 
@@ -66,7 +66,7 @@ The `smartAnalyze` function flips the traditional flow. Instead of extracting fr
 3. **Extracts 3-5 frames** at only those specific timestamps
 4. **Analyzes** only those frames with the vision model
 
-This is the cheapest path: Whisper + 1 text call + 3-5 vision calls, vs. 15-50 vision calls for blind extraction. The transcript already tells you what's happening — the frames just add visual context where the speaker references something visual.
+The call breakdown is Whisper chunks + 1 text call + one vision call per flagged timestamp. The transcript already carries the spoken content; the frames add visual context only where the speaker points at something. The vision count then tracks the number of visual references, not the video's length, so the gap from blind extraction widens as videos get longer.
 
 ## Worker
 

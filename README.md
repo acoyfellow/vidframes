@@ -6,11 +6,15 @@
 [![GitHub](https://img.shields.io/badge/github-acoyfellow/vidframes-181717?style=for-the-badge)](https://github.com/acoyfellow/vidframes)
 [![MIT](https://img.shields.io/badge/license-MIT-blue?style=for-the-badge)](LICENSE)
 
-Extract frames from video, analyze them with vision models, and transcribe audio — all through Cloudflare Workers AI. Built-in cost controls keep spending predictable.
+Extract frames from video, analyze them with vision models, and transcribe audio through Cloudflare Workers AI.
 
-**The problem:** A 5-minute video at 60fps is 18,000 frames. Sending all of them to a frontier vision model is prohibitively expensive.
+A 5-minute video at 60fps holds 18,000 frames. Analyzing every one is 18,000 vision calls. vidframes cuts that count three ways:
 
-**The fix:** Scene detection by default (10-30x fewer frames), resize before analysis (smaller = cheaper), dry-run estimates (know cost before spending), and hard frame caps (`--max-frames`).
+- **Scene detection** (default) emits a frame only when the inter-frame difference crosses a threshold, so static stretches produce nothing.
+- **Resize** shrinks each frame to a max dimension (512px default) before upload, lowering tokens per call.
+- **`--dry-run`** prints the frame count and model name without making a call. **`--max-frames`** sets a hard ceiling on vision calls.
+
+One `smart` run on an 11-second test clip made 4 API calls: 1 Whisper, 1 text LLM, 2 vision. Full output is on the [live site](https://vidframes.coey.dev#proof).
 
 ## Quick start
 
@@ -72,8 +76,14 @@ vidframes run <video> [opts]               # everything: frames + analysis + tra
 
 All logic is in the library. The CLI is a thin wrapper.
 
+Install from GitHub (the package is `private`, so it is not on npm):
+
+```bash
+bun add github:acoyfellow/vidframes
+```
+
 ```ts
-import { probeVideo, extractFrames, analyzeVideo, smartAnalyze, estimateAnalysis } from 'vidframes';
+import { probeVideo, extractFrames, analyzeVideo, smartAnalyze, estimateAnalysis } from '@acoyfellow/vidframes';
 
 // probe
 const info = await probeVideo('video.mp4');
@@ -133,6 +143,6 @@ Worker config is in `wrangler.jsonc`. The Worker serves the static site from `si
 
 ## Why this exists
 
-Vision models can "watch" a video by analyzing its frames, but naively extracting every frame is prohibitively expensive. This tool makes the cost explicit and controllable: scene detection minimizes frames, resize minimizes tokens, dry-run shows the bill before you pay it, and hard caps prevent surprises.
+A vision model can describe a video by reading its frames, but extracting every frame turns a short clip into thousands of model calls. vidframes keeps the call count under the operator's control: scene detection drops static frames, resize trims tokens per call, `--dry-run` prints the count before any call runs, and `--max-frames` caps it. The transcript-first `smart` mode goes further by analyzing only the frames the transcript flags as visual.
 
 MIT. Built by [@acoyfellow](https://x.com/acoyfellow).
