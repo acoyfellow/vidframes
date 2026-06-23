@@ -19,7 +19,8 @@ function parseArgs(argv: string[]): {
   for (let i = 0; i < rest.length; i++) {
     if (rest[i].startsWith('--')) {
       const key = rest[i].slice(2);
-      const val = rest[i + 1]?.startsWith('--') ? 'true' : rest[++i];
+      const next = rest[i + 1];
+      const val = !next || next.startsWith('--') ? 'true' : rest[++i];
       opts[key] = val;
     }
   }

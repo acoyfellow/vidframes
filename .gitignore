@@ -2,11 +2,13 @@ node_modules/
 frames/
 dist/
 site/dist/
+proof/
 *.mp4
 *.mov
 *.avi
 *.mkv
 *.webm
+*.aiff
 .env
 .env.local
 .dev.vars

@@ -207,12 +207,8 @@ function parseTimestamps(
   maxDuration: number,
   maxCount: number,
 ): TimestampSelection[] {
-  const match = text.match(/\[[\s\S]*\]/);
-  if (!match) return [];
-
-  try {
-    const parsed = JSON.parse(match[0]) as Array<{ timestamp?: number; reason?: string }>;
-    return parsed
+  const extract = (items: Array<{ timestamp?: number; reason?: string }>): TimestampSelection[] =>
+    items
       .filter(
         (item) =>
           typeof item.timestamp === 'number' &&
@@ -225,9 +221,57 @@ function parseTimestamps(
       }))
       .sort((a, b) => a.timestamp - b.timestamp)
       .slice(0, maxCount);
-  } catch {
-    return [];
+
+  // Try JSON array first
+  const jsonMatch = text.match(/\[[\s\S]*\]/);
+  if (jsonMatch) {
+    try {
+      return extract(JSON.parse(jsonMatch[0]) as Array<{ timestamp?: number; reason?: string }>);
+    } catch {
+      try {
+        const fixed = jsonMatch[0].replace(/'/g, '"');
+        return extract(JSON.parse(fixed) as Array<{ timestamp?: number; reason?: string }>);
+      } catch {
+        // fall through to regex
+      }
+    }
   }
+
+  // Fallback: extract individual {timestamp, reason} pairs via regex
+  const pairPattern =
+    /\{\s*['"]?timestamp['"]?\s*:\s*(\d+(?:\.\d+)?)\s*,\s*['"]?reason['"]?\s*:\s*['"]([^'"]+)['"]\s*\}/gi;
+  const results: TimestampSelection[] = [];
+  let m: RegExpExecArray | null = pairPattern.exec(text);
+  while (m !== null) {
+    const ts = Number.parseFloat(m[1]);
+    if (ts >= 0 && ts <= maxDuration) {
+      results.push({ timestamp: Math.round(ts), reason: m[2] });
+    }
+    m = pairPattern.exec(text);
+  }
+
+  if (results.length > 0) {
+    return results.sort((a, b) => a.timestamp - b.timestamp).slice(0, maxCount);
+  }
+
+  // Last resort: extract timestamps from natural language
+  const lines = text.split('\n');
+  for (const line of lines) {
+    const tsMatch = line.match(/(\d+(?:\.\d+)?)\s*(?:s(?:ec(?:ond)?s?)?|sec)\b/i);
+    if (tsMatch) {
+      const ts = Number.parseFloat(tsMatch[1]);
+      if (ts >= 0 && ts <= maxDuration) {
+        const reason = line
+          .replace(tsMatch[0], '')
+          .trim()
+          .replace(/^[-:]\s*/, '')
+          .slice(0, 100);
+        results.push({ timestamp: Math.round(ts), reason: reason || 'visual context' });
+      }
+    }
+  }
+
+  return results.sort((a, b) => a.timestamp - b.timestamp).slice(0, maxCount);
 }
 
 export async function selectTimestamps(
@@ -248,11 +292,27 @@ export async function selectTimestamps(
 
   const result = (await runModel(
     model,
-    { messages: [{ role: 'user', content: prompt }] },
+    {
+      messages: [
+        {
+          role: 'system',
+          content:
+            'You are a JSON-only API. Respond with valid JSON arrays only. No markdown, no code blocks, no explanations.',
+        },
+        { role: 'user', content: prompt },
+      ],
+    },
     creds,
-  )) as { response?: string };
+  )) as { response?: string; choices?: Array<{ message?: { content?: string } }> };
 
-  const text = result?.response ?? '';
+  const response = result?.response;
+
+  // Workers AI sometimes auto-parses JSON responses into objects
+  if (Array.isArray(response)) {
+    return parseTimestamps(JSON.stringify(response), videoInfo.duration, maxTimestamps);
+  }
+
+  const text = String(response ?? result?.choices?.[0]?.message?.content ?? '');
   return parseTimestamps(text, videoInfo.duration, maxTimestamps);
 }
 
